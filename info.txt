@@ -1,0 +1,10 @@
+Executar o servidor:
+>> python app.py
+
+Executando a requisição POST:
+>> curl -X POST http://127.0.0.1:5000/data -H "Content-Type: application/json" -d "{\"temperature\":70,\"pressure\":5.1,\"status\":\"RUN\"}"
+
+SUPERUSER DJANGO
+Username: jonas
+Emaill: jonassignoreti7@gmail.com
+Password: django
