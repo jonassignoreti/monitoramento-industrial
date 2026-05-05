@@ -2,3 +2,4 @@ venv/
 database/database.db
 __pycache__/
 plans.txt
+info.txt
