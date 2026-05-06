@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Industrial Monitor</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    body {
+      font-family: monospace;
+      background: #f4f4f4;
+      color: #222;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 { font-size: 20px; margin-bottom: 4px; }
+
+    #clock { font-size: 13px; color: #666; margin-bottom: 24px; }
+
+    .cards {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 16px 22px;
+      min-width: 140px;
+    }
+
+    .card-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .card-value { font-size: 32px; font-weight: bold; }
+    .card-unit  { font-size: 12px; color: #999; margin-top: 2px; }
+
+    .status-run   { color: #2a9d2a; }
+    .status-error { color: #d00; }
+
+    .charts {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+    }
+
+    .chart-box {
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 16px;
+      flex: 1;
+      min-width: 300px;
+    }
+
+    .chart-box h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin: 0 0 12px; }
+
+    .table-box {
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 16px;
+    }
+
+    .table-box h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin: 0 0 12px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 6px 10px; border-bottom: 1px solid #ddd; font-size: 11px; color: #888; text-transform: uppercase; }
+    td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; }
+
+    tr.alert-row td { background: #fff5f5; }
+
+    footer { margin-top: 24px; font-size: 11px; color: #aaa; }
+  </style>
+</head>
+<body>
+
+  <h1>Industrial Monitor</h1>
+  <div id="clock">--:--:--</div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card-label">Temperatura</div>
+      <div class="card-value" id="val-temp">--</div>
+      <div class="card-unit">°C</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Pressão</div>
+      <div class="card-value" id="val-press">--</div>
+      <div class="card-unit">bar</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Status</div>
+      <div class="card-value" id="val-status">--</div>
+      <div class="card-unit">estado atual</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Alertas</div>
+      <div class="card-value" id="val-alerts">--</div>
+      <div class="card-unit">registros anômalos</div>
+    </div>
+  </div>
+
+  <div class="charts">
+    <div class="chart-box">
+      <h3>Temperatura — Histórico</h3>
+      <canvas id="chart-temp" height="120"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>Pressão — Histórico</h3>
+      <canvas id="chart-press" height="120"></canvas>
+    </div>
+  </div>
+
+  <div class="table-box">
+    <h3>Últimas leituras &nbsp;<span id="record-count" style="font-weight:normal;color:#aaa"></span></h3>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Timestamp</th>
+          <th>Temperatura (°C)</th>
+          <th>Pressão (bar)</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        <tr><td colspan="5" style="color:#aaa;text-align:center;padding:20px">Aguardando dados...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer>Atualização automática a cada 3 segundos · Snap7 + Flask + Django</footer>
+
+<script>
+  setInterval(() => {
+    document.getElementById('clock').textContent = new Date().toLocaleTimeString('pt-BR');
+  }, 1000);
+
+  function makeChart(id, color) {
+    return new Chart(document.getElementById(id).getContext('2d'), {
+      type: 'line',
+      data: { labels: [], datasets: [{ data: [], borderColor: color, backgroundColor: 'transparent', tension: 0.4, pointRadius: 2, borderWidth: 2 }] },
+      options: {
+        responsive: true,
+        animation: { duration: 300 },
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { maxTicksLimit: 8, font: { size: 10 } }, grid: { color: '#eee' } },
+          y: { ticks: { font: { size: 10 } }, grid: { color: '#eee' } }
+        }
+      }
+    });
+  }
+
+  const chartTemp  = makeChart('chart-temp',  '#e05c00');
+  const chartPress = makeChart('chart-press', '#0077cc');
+
+  async function fetchData() {
+    try {
+      const res  = await fetch('/api/latest/');
+      const json = await res.json();
+      if (!json.latest) return;
+
+      const { temperature, pressure, status } = json.latest;
+
+      document.getElementById('val-temp').textContent  = temperature.toFixed(1);
+      document.getElementById('val-press').textContent = pressure.toFixed(2);
+
+      const statusEl = document.getElementById('val-status');
+      statusEl.textContent = status;
+      statusEl.className   = 'card-value ' + (status === 'RUN' ? 'status-run' : 'status-error');
+
+      document.getElementById('val-alerts').textContent   = json.alerts_count;
+      document.getElementById('record-count').textContent = json.total_count + ' registros';
+
+      const labels = json.history.map(r => new Date(r.timestamp).toLocaleTimeString('pt-BR'));
+      chartTemp.data.labels  = chartPress.data.labels  = labels;
+      chartTemp.data.datasets[0].data  = json.history.map(r => r.temperature);
+      chartPress.data.datasets[0].data = json.history.map(r => r.pressure);
+      chartTemp.update('none');
+      chartPress.update('none');
+
+      const rows = [...json.history].reverse().slice(0, 15);
+      document.getElementById('table-body').innerHTML = rows.map(r => {
+        const isAlert = r.temperature > 80 || r.status === 'ERROR';
+        return `<tr class="${isAlert ? 'alert-row' : ''}">
+          <td>${r.id}</td>
+          <td>${new Date(r.timestamp).toLocaleString('pt-BR')}</td>
+          <td style="${r.temperature > 80 ? 'color:#d00' : ''}">${r.temperature.toFixed(1)}</td>
+          <td>${r.pressure.toFixed(2)}</td>
+          <td class="${r.status === 'RUN' ? 'status-run' : 'status-error'}">${r.status}</td>
+        </tr>`;
+      }).join('');
+
+    } catch(e) { console.warn('Erro:', e); }
+  }
+
+  fetchData();
+  setInterval(fetchData, 1000);
+</script>
+</body>
+</html>
