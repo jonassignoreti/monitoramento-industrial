@@ -38,5 +38,17 @@ while True:
     except Exception as e:
         print("Error connecting to PLC:", e)
         
+        payload = {
+            "temperature": None,
+            "pressure": None,
+            "status": "COMM_ERROR"
+        }
+        
+        try:
+            response = requests.post(URL, json=payload)
+            print("Sent:", payload, "| Status:", response.status_code)
+        except Exception as e:
+            print("API also unavailable:", e)
+        
         time.sleep(5)
 

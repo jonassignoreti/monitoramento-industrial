@@ -14,13 +14,13 @@ def register_routes(app):
         pressure = data.get('pressure')
         status = data.get('status')
         
-        if temperature is None or pressure is None or status is None:
+        if 'temperature' not in data or 'pressure' not in data or 'status' not in data:
             return jsonify({"Error": "Missing fields"}), 400
         
-        if not isinstance(temperature, (int, float)):
+        if temperature is not None and not isinstance(temperature, (int, float)):
             return jsonify({"Error": "Temperature must be a number"}), 400
         
-        if not isinstance(pressure, (int, float)):
+        if pressure is not None and not isinstance(pressure, (int, float)):
             return jsonify({"Error": "Pressure must be a number"}), 400
         
         if not isinstance(status, str):

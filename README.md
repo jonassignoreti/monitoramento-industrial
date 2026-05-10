@@ -1,172 +1,210 @@
-# Industrial Data Monitoring System
+# Sistema de Monitoramento Industrial
 
-## 📌 Overview
+## 📌 Visão Geral
 
-This project simulates a real industrial data monitoring system, integrating PLC data acquisition, backend processing, and web visualization.
+Sistema de monitoramento industrial que integra aquisição de dados de CLP, processamento em backend Python e visualização em dashboard web com atualização em tempo real.
 
-It collects real-time data from a simulated Siemens PLC, processes it through a Python backend, stores it in a database, and provides a web interface for monitoring and analysis.
+Coleta dados em tempo real de um CLP Siemens via protocolo S7, processa através de uma API REST, persiste em banco de dados e exibe em um dashboard web com gráficos e alertas automáticos.
 
-\---
+---
 
-## 🏗️ Architecture
+## 🏗️ Arquitetura
 
 ```
-PLC (PLCSIM)
+CLP (PLCSIM Advanced)
     ↓
-Collector (Snap7)
+Collector (Snap7 / S7 Protocol)
     ↓
-Flask API
+Flask API (porta 5000)
     ↓
 SQLite Database
     ↓
-Django Dashboard (Admin)
+Django Dashboard (porta 8000)
 ```
 
-\---
+---
 
-## ⚙️ Technologies
+## ⚙️ Tecnologias
 
 * Python
-* Flask (Data ingestion API)
-* Django (Dashboard \& Admin)
-* SQLite (Database)
-* python-snap7 (PLC communication)
-* Requests (HTTP communication)
+* Flask (API de ingestão de dados)
+* Django (Dashboard web)
+* SQLite (Banco de dados)
+* python-snap7 (Comunicação com CLP via protocolo S7)
+* Requests (Comunicação HTTP entre collector e API)
+* Chart.js (Gráficos em tempo real no dashboard)
 
-\---
+---
 
-## 🚀 Features
+## 🚀 Funcionalidades
 
-### 🔌 Data Acquisition
+### 🔌 Aquisição de Dados
 
-* Reads real-time data from PLC (temperature, pressure, status)
-* Uses Snap7 protocol for industrial communication
+* Leitura em tempo real do CLP (temperatura, pressão, status)
+* Comunicação via protocolo S7 (Snap7)
+* Reconexão automática em caso de perda de comunicação
+* Envio de status `COMM ERROR` quando o CLP fica inacessível
 
-### 🧠 Backend Processing
+### 🧠 Processamento Backend
 
-* REST API for receiving data (`POST /data`)
-* Data persistence in SQLite
-* Alert detection (`GET /alerts`)
+* API REST para recebimento de dados (`POST /data`)
+* Persistência dos dados em SQLite
+* Detecção de alertas (`GET /alerts`)
+* Validação de campos e tipos de dados
 
-### 📊 Data Visualization
+### 📊 Dashboard Web
 
-* Django Admin dashboard
-* Real-time data inspection
-* Filtering and search capabilities
+* Atualização automática a cada 3 segundos
+* Cards com valores em tempo real (temperatura, pressão, status, total de alertas)
+* Gráficos de linha com histórico das últimas 30 leituras
+* Tabela com as últimas 15 leituras
+* Destaque visual para registros em estado de alerta
 
-### ⚠️ Alerts
+### ⚠️ Alertas
 
-* Triggered when:
+Disparados quando:
 
-  * temperature > 80
-  * status = ERROR
+* `temperature > 80`
+* `status = ERROR`
+* `status = COMM ERROR` (falha de comunicação com o CLP)
 
-\---
+---
 
-## 📁 Project Structure
+## 📁 Estrutura do Projeto
 
 ```
 monitoramento-industrial/
 │
-├── api/          # Flask API
-├── collector/    # PLC data reader (Snap7)
-├── dashboard/    # Django project
-├── database/     # SQLite database
-├── venv/         # Virtual environment
-└── start.bat     # Start all services
+├── api/
+│   ├── app.py          # Inicialização da aplicação Flask
+│   ├── routes.py       # Endpoints da API
+│   ├── services.py     # Formatação dos dados
+│   └── database.py     # Conexão e queries SQLite
+│
+├── collector/
+│   └── plc_reader.py   # Leitura do CLP via Snap7
+│
+├── dashboard/
+│   ├── core/           # Configurações Django
+│   └── monitor/        # App de monitoramento
+│       ├── models.py
+│       ├── views.py
+│       ├── admin.py
+│       └── templates/
+│           └── monitor/
+│               └── dashboard.html
+│
+├── database/
+│   └── database.db     # Banco de dados SQLite
+│
+├── venv/               # Ambiente virtual
+└── start.bat           # Inicializa todos os serviços
 ```
 
-\---
+---
 
-## ▶️ How to Run
+## ▶️ Como Executar
 
-### 1\. Install dependencies
+### 1. Instalar dependências
 
-```
+```bash
 pip install -r requirements.txt
 ```
 
-\---
+### 2. Iniciar todos os serviços
 
-### 2\. Start all services
-
-```
+```bash
 start.bat
 ```
 
-This will start:
+Isso irá iniciar:
 
-* Flask API (port 5000)
-* PLC Collector
-* Django Dashboard (port 8000)
+* Flask API (porta 5000)
+* Collector do CLP
+* Django Dashboard (porta 8000)
 
-\---
+### 3. Acessar o sistema
 
-### 3\. Access the system
+* Dashboard: `http://127.0.0.1:8000`
+* API: `http://127.0.0.1:5000`
+* Django Admin: `http://127.0.0.1:8000/admin`
 
-* API: http://127.0.0.1:5000
-* Django Admin: http://127.0.0.1:8000/admin
+Para acessar em rede local:
 
-\---
+```bash
+python manage.py runserver 0.0.0.0:8000
+```
 
-## 📡 API Endpoints
+---
+
+## 📡 Endpoints da API
 
 ### POST /data
 
+Recebe leitura do CLP:
+
 ```json
 {
-  "temperature": 85,
+  "temperature": 85.3,
   "pressure": 5.2,
   "status": "RUN"
 }
 ```
 
-\---
+Em caso de falha de comunicação com o CLP:
+
+```json
+{
+  "temperature": null,
+  "pressure": null,
+  "status": "COMM ERROR"
+}
+```
 
 ### GET /data
 
-Returns all stored data
-
-\---
+Retorna todos os dados armazenados.
 
 ### GET /alerts
 
-Returns abnormal data based on rules:
+Retorna registros anômalos com base nas regras:
 
-* temperature > 80
-* status = ERROR
+* `temperature > 80`
+* `status = ERROR`
+* `status = COMM ERROR`
 
-\---
+---
 
-## 🔧 PLC Integration
+## 🔧 Integração com CLP
 
-* Simulated using Siemens PLCSIM Advanced
-* Data read via Snap7 (S7 protocol)
-* Requires:
+* Testado com Siemens PLCSIM Advanced
+* Comunicação via Snap7 (protocolo S7)
+* Leitura do DB1, offset 0, 10 bytes:
+  * Bytes 0–3: temperatura (REAL, big-endian)
+  * Bytes 4–7: pressão (REAL, big-endian)
+  * Bytes 8–9: status (INT, big-endian)
+* Requisitos no TIA Portal:
+  * DB não otimizado
+  * PUT/GET habilitado
 
-  * Non-optimized DB
-  * PUT/GET enabled
+---
 
-\---
+## 🎯 Objetivo
 
-## 🎯 Purpose
+Este projeto demonstra:
 
-This project demonstrates:
+* Integração entre automação industrial e desenvolvimento de software
+* Aquisição de dados em tempo real via protocolo S7
+* Desenvolvimento de API REST com Flask
+* Visualização de dados em tempo real com Django e Chart.js
+* Tratamento de falhas de comunicação industrial
 
-* Integration between industrial automation and software systems
-* Real-time data acquisition from PLCs
-* Backend API development
-* Data visualization using web frameworks
+---
 
-\---
+## 🚀 Possíveis Melhorias Futuras
 
-## 🚀 Future Improvements
-
-* Real-time dashboard (charts)
-* WebSocket integration
-* Authentication system enhancements
-* Migration to PostgreSQL
-* Containerization (Docker)
-
-\---
-
+* WebSocket para atualização sem polling
+* Sistema de autenticação
+* Migração para PostgreSQL
+* Containerização com Docker
+* Exportação de relatórios em PDF

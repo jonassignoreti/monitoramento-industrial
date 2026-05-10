@@ -167,8 +167,8 @@
 
       const { temperature, pressure, status } = json.latest;
 
-      document.getElementById('val-temp').textContent  = temperature.toFixed(1);
-      document.getElementById('val-press').textContent = pressure.toFixed(2);
+      document.getElementById('val-temp').textContent  = temperature != null ? temperature.toFixed(1) : '--';
+      document.getElementById('val-press').textContent = pressure != null ? pressure.toFixed(2) : '--';
 
       const statusEl = document.getElementById('val-status');
       statusEl.textContent = status;
@@ -186,12 +186,12 @@
 
       const rows = [...json.history].reverse().slice(0, 15);
       document.getElementById('table-body').innerHTML = rows.map(r => {
-        const isAlert = r.temperature > 80 || r.status === 'ERROR';
+        const isAlert = r.temperature > 80 || r.status === 'ERROR' || r.status === 'COMM ERROR';
         return `<tr class="${isAlert ? 'alert-row' : ''}">
           <td>${r.id}</td>
           <td>${new Date(r.timestamp).toLocaleString('pt-BR')}</td>
-          <td style="${r.temperature > 80 ? 'color:#d00' : ''}">${r.temperature.toFixed(1)}</td>
-          <td>${r.pressure.toFixed(2)}</td>
+          <td style="${r.temperature > 80 ? 'color:#d00' : ''}">${r.temperature != null ? r.temperature.toFixed(1) : '--'}</td>
+          <td>${r.pressure != null ? r.pressure.toFixed(2) : '--'}</td>
           <td class="${r.status === 'RUN' ? 'status-run' : 'status-error'}">${r.status}</td>
         </tr>`;
       }).join('');

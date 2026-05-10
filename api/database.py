@@ -49,7 +49,7 @@ def get_alerts():
 
     cursor.execute("""
         SELECT * FROM sensor_data
-        WHERE temperature > 80 OR status = 'ERROR'
+        WHERE temperature > 80 OR status = 'ERROR' OR status = 'COMM_ERROR'
         """)
     rows = cursor.fetchall()
     conn.close()
